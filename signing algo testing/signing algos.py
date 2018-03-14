@@ -1,46 +1,12 @@
-import Crypto.Hash.MD5 as MD5
-import Crypto.PublicKey.RSA as RSA
-import Crypto.PublicKey.DSA as DSA
-import Crypto.PublicKey.ElGamal as ElGamal
-import Crypto.Util.number as CUN
-import os
-
-plaintext = 'The rain in Spain falls mainly on the Plain'
-
-# Here is a hash of the message
-hash = MD5.new(plaintext).digest()
-print(repr(hash))
-# '\xb1./J\xa883\x974\xa4\xac\x1e\x1b!\xc8\x11'
-
-for alg in (RSA, DSA, ElGamal):
-    # Generates a fresh public/private key pair
-    key = alg.generate(384, os.urandom)
-
-    if alg == DSA:
-        K = CUN.getRandomNumber(128, os.urandom)
-    elif alg == ElGamal:
-        K = CUN.getPrime(128, os.urandom)
-        while CUN.GCD(K, key.p - 1) != 1:
-            print('K not relatively prime with {n}'.format(n=key.p - 1))
-            K = CUN.getPrime(128, os.urandom)
-        # print('GCD({K},{n})=1'.format(K=K,n=key.p-1))
-    else:
-        K = ''
-
-    # You sign the hash
-    signature = key.sign(hash, K)
-    print(len(signature), alg.__name__)
-    # (1, 'Crypto.PublicKey.RSA')
-    # (2, 'Crypto.PublicKey.DSA')
-    # (2, 'Crypto.PublicKey.ElGamal')
-
-    # You share pubkey with Friend
-    pubkey = key.publickey()
-
-    # You send message (plaintext) and signature to Friend.
-    # Friend knows how to compute hash.
-    # Friend verifies the message came from you this way:
-    assert pubkey.verify(hash, signature)
-
-    # A different hash should not pass the test.
-    assert not pubkey.verify(hash[:-1], signature)
+from Crypto.Hash import MD5
+from Crypto.PublicKey import RSA
+from Crypto import Random
+rng = Random.new().read
+RSAkey = RSA.generate(1024, rng)   # This will take a while...
+print(RSAkey)
+hash = MD5.new("plaintext".encode()).digest()
+signature = RSAkey.sign(hash, rng)
+print(signature)   # Print what an RSA sig looks like--you don't really care.
+print(RSAkey.verify(hash, signature))     # This sig will check out
+print(RSAkey.verify(hash[:-1], signature))# This sig will fail
+print(repr(RSAkey.publickey()))
